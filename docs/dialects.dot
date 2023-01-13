@@ -4,10 +4,28 @@ digraph G {
   rankdir = TB
   splines=spline
   node [shape=box style=filled fillcolor="white"]
+  edge [arrowhead=diamond arrowtail=diamond arrowsize=0.75];
   nodesep=0.2 // horizontal compression
-  ranksep=0.5 // vertical compression
+  ranksep=0.2 // vertical compression
   compound=true
+  center=true
 
+  subgraph cluster_legend_top {
+    label = "Legend" ;
+    shape = rectangle ;
+    rankdir=LR
+    bgcolor="lightgray"
+    LabelD [fillcolor="#beaed4"]
+    LabelC [fillcolor="#fdc086"]
+    LabelB []
+    LabelA [fillcolor="#ffff99" shape=octagon]
+    LabelE [fillcolor="#7fc97f" shape=note]
+    la -> la [label="  implemented" arrowhead=none] ; 
+    lb -> lb [label="  planned" arrowhead=none style=dashed] ; 
+    la [style=invis] ;
+    lb [style=invis] ;
+  }
+  
   // MLIR frontends
   subgraph cluster_mlir_frontends {
     label = "Upstream frontends (selection)"
@@ -57,10 +75,14 @@ digraph G {
     // Core dialects
     subgraph cluster_RTL {
       label = "Core dialects"
-      Seq [URL="https://circt.llvm.org/docs/Dialects/Seq/"]
-      HW [URL="https://circt.llvm.org/docs/Dialects/HW/"]
-      Comb [URL="https://circt.llvm.org/docs/Dialects/Comb/"]
-      Interop [URL="https://circt.llvm.org/docs/Dialects/Interop/"]
+      struct1 [
+        label="<portSeq>Seq | <portHW>HW | <portComb>Comb | <portInterop>Interop"
+        shape=record
+      ];
+      // Seq [URL="https://circt.llvm.org/docs/Dialects/Seq/"]
+      // HW [URL="https://circt.llvm.org/docs/Dialects/HW/"]
+      // Comb [URL="https://circt.llvm.org/docs/Dialects/Comb/"]
+      // Interop [URL="https://circt.llvm.org/docs/Dialects/Interop/"]
     }
     LLHD [URL="https://circt.llvm.org/docs/Dialects/LLHD/"]
 
@@ -83,7 +105,7 @@ digraph G {
     Calyx_native [label="Calyx native"]
   }
 
-  FIRFile [label=".fir" fillcolor="#7fc97f" shape="note"]
+  FIRFile [label=".fir" fillcolor="#7fc97f" shape=note]
 
   subgraph cluster_input_langs {
     label = "Input languages"
@@ -95,7 +117,7 @@ digraph G {
 
   // Output file formats
   subgraph output_file_formats {
-    node [fillcolor="#7fc97f" shape="note"]
+    node [fillcolor="#7fc97f" shape=note]
     VCDTrace [label="Trace (vcd)"]
     SystemCFile [label="SystemC (c++)"]
     SVFile [label="SystemVerilog"]
@@ -116,10 +138,10 @@ digraph G {
 
   // Things that lower into a subset of the RTL-like dialects. Cluster these
   // together to avoid a massive clutter.
-  {FIRRTL FSM ESI MSFT HWArith MooreMIR} -> HW [lhead=cluster_RTL]
-  Seq -> SV
-  {HW MooreMIR} -> LLHD
-  Comb -> SystemC [ltail=cluster_RTL]
+  {FIRRTL FSM ESI MSFT HWArith MooreMIR Calyx_native} -> struct1 [lhead=cluster_RTL]
+  struct1:portHW -> {SV LLHD ExportVerilog}
+  {MooreMIR} -> LLHD
+  struct1:labelComb -> SystemC
   ExportVerilog -> SVFile
 
   // Tool flows
@@ -130,12 +152,11 @@ digraph G {
   SystemC -> ExportSystemC
   ExportSystemC -> SystemCFile
   SV -> ExportVerilog
-  Seq -> ExportVerilog [ltail=cluster_RTL]
-  HW -> llhd_sim [ltail=cluster_RTL]
+  // struct1:portHW -> ExportVerilog
+  struct1:portHW -> llhd_sim [ltail=cluster_RTL]
   SVVHDL -> Moore [weight=999]
   Moore -> MooreMIR
   Calyx -> Calyx_native
-  Calyx_native -> HW [lhead=cluster_RTL]
   LLHD -> llhd_sim
   llhd_sim -> VCDTrace
   //ESI -> CapNProto
@@ -156,13 +177,14 @@ digraph G {
 
   // Leave one rank free above the RTL cluster to improve routing of incoming
   // edges.
-  {FIRRTL FSM ESI MSFT HWArith MooreMIR} -> space_above_RTL [weight=999, style=invis]
-  space_above_RTL -> {Seq HW Comb} [lhead=cluster_RTL, weight=999, style=invis]
+  // {FIRRTL FSM ESI MSFT HWArith MooreMIR} -> space_above_RTL [weight=999, style=invis]
+  space_above_RTL -> {struct1} [lhead=cluster_RTL, weight=999, style=invis]
 
   // Fix the following sink nodes below the CIRCT cluster
   SystemCFile -> {TCL ServiceDesc} [weight=999 style=invis]
 
   // Better organize the top.
+  {lb la} -> {PyTorch Polygeist Chisel} [weight=999 style=invis]
   {PyTorch Polygeist Chisel} -> CF [weight=999 style=invis]
   FIRFile -> Scheduling [weight=999 style=invis]
 }
